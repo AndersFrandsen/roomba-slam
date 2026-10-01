@@ -1,0 +1,12 @@
+# Yocto build artifacts
+yocto/build/
+yocto/downloads/
+yocto/sstate-cache/
+yocto/poky/
+yocto/meta-openembedded/
+yocto/meta-raspberrypi/
+
+# Secrets
+yocto/kas/wifi.yml
+
+datasheets/

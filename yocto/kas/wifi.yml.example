@@ -1,0 +1,16 @@
+# WiFi credentials for the RoboBob image
+#
+# Copy to yocto/kas/wifi.yml (gitignored) and fill in wi-fi configuration:
+#
+# "just build" picks it up automatically if present. Consumed by
+# meta-robobob/recipes-connectivity/wpa-supplicant/wpa-supplicant_%.bbappend.
+#
+# Note: the Pi Zero 2 W is 2.4GHz only.
+header:
+  version: 14
+
+local_conf_header:
+  wifi: |
+    WIFI_SSID = "network-name"
+    WIFI_PASSWORD = "network-password"
+    WIFI_COUNTRY = "DK"

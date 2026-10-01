@@ -1,0 +1,16 @@
+header:
+  version: 14
+
+repos:
+  meta-ros:
+    url: https://github.com/ros/meta-ros
+    branch: scarthgap
+    layers:
+      meta-ros-common:
+      meta-ros2:
+      meta-ros2-jazzy:
+
+local_conf_header:
+  ros: |
+    ROS_DISTRO = "jazzy"
+    RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"

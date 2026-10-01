@@ -1,0 +1,43 @@
+header:
+  version: 14
+
+distro: poky
+target: robobob-image
+
+repos:
+  poky:
+    url: https://git.yoctoproject.org/poky
+    branch: scarthgap
+    commit: d4576e3c081a7ee7b57d48421c4c4f491cb4defe
+    layers:
+      meta:
+      meta-poky:
+
+  meta-openembedded:
+    url: https://github.com/openembedded/meta-openembedded
+    branch: scarthgap
+    commit: ae7dfb12245c7f9b9a353499e2688015bd4e6413
+    layers:
+      meta-oe:
+      meta-python:
+      meta-networking:
+
+  meta-raspberrypi:
+    url: https://github.com/agherzan/meta-raspberrypi
+    branch: scarthgap
+    commit: 2c646d29912dcc873469a57b1c207e1549c5094d
+
+  meta-robobob:
+    path: meta-robobob
+
+local_conf_header:
+  robobob: |
+    CONF_VERSION = "2"
+    PACKAGE_CLASSES = "package_ipk"
+    EXTRA_IMAGE_FEATURES ?= "debug-tweaks ssh-server-openssh"
+    LICENSE_FLAGS_ACCEPTED = "synaptics-killswitch"
+    BB_DISKMON_DIRS ??= "\
+        STOPTASKS,${TMPDIR},1G,100K \
+        HALT,${TMPDIR},100M,1K \
+    "
+    PARALLEL_MAKE:pn-gcc = "-j 1"
