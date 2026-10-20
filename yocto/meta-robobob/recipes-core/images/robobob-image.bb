@@ -5,4 +5,4 @@ inherit core-image
 
 IMAGE_FEATURES:append = " ssh-server-openssh"
 
-IMAGE_INSTALL:append = " lidar-selftest"
+IMAGE_INSTALL:append = " lidar-selftest roomba-selftest"
