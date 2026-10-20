@@ -98,3 +98,63 @@ PASS
 | 51 | Motor not spinning |
 | 52 | Incomplete sweep |
 | 53 | Too many dropped bytes |
+
+## Roomba Self-Test
+
+Use `roomba-selftest` for a bring-up check of the Roomba Open Interface. Use it to verify wiring (remember level shifter, so you don't damage the Pi) and the serial link.
+
+**Wiring on the Raspberry Pi Zero 2 W:**
+
+| Signal | Pi pin |
+|--------|--------|
+| Roomba RXD (Mini-DIN pin 3) | GPIO23 (TX) |
+| Roomba TXD (Mini-DIN pin 4) | GPIO24 (RX) |
+| GND (Mini-DIN pin 6/7) | GND |
+
+GPIO23/24 are not hardware UART pins, so the link is a software UART through `pigpiod`, which starts at boot. 
+
+**Checks:**
+1. Link - finds the Roomba at 19200 baud, or switches it down from 115200
+2. Battery - voltage, current, temperature, charge and charging state
+3. Dock - fails if a charging source is present, as Safe mode exits while charging
+4. Safe mode - enters Safe mode and confirms it
+5. Song - plays three notes
+6. LEDs and buttons - blinks the blue LED and fades the Power LED until CLEAN, SPOT or DOCK is pressed (20 s)
+
+The Roomba is left in Passive mode with the LEDs off, so it charges and sleeps normally.
+
+```bash
+# run with defaults (TX on GPIO23, RX on GPIO24)
+roomba-selftest
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--tx-gpio` | `23` | GPIO wired to Roomba RXD |
+| `--rx-gpio` | `24` | GPIO wired to Roomba TXD |
+
+**Example output:**
+
+```
+root@robobob-zero2w:~# roomba-selftest
+port    tx=GPIO23 rx=GPIO24
+link    19200 8N1 mode=safe
+battery 15.92 V -127 mA 21 C 1882/2068 mAh (91%) not charging
+mode    safe
+song    played
+button  press CLEAN, SPOT or DOCK (keep the Roomba on the floor)
+button  CLEAN
+PASS
+```
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|---------|
+| 0 | Pass |
+| 10 | pigpiod not running or pigpio error |
+| 20 | No response at 19200 or 115200 |
+| 21 | Could not enter or left Safe mode |
+| 22 | Short sensor reply |
+| 30 | On the dock |
+| 40 | No button press |
