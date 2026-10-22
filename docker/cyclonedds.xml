@@ -1,0 +1,9 @@
+<CycloneDDS>
+  <Domain>
+    <Discovery>
+      <Peers>
+        <Peer address="${ROBOT_IP}"/>
+      </Peers>
+    </Discovery>
+  </Domain>
+</CycloneDDS>
