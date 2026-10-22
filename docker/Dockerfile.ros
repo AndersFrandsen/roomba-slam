@@ -1,0 +1,11 @@
+FROM osrf/ros:jazzy-desktop
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ros-jazzy-rmw-cyclonedds-cpp \
+        ros-jazzy-teleop-twist-keyboard \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY cyclonedds.xml /etc/cyclonedds.xml
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ENV CYCLONEDDS_URI=file:///etc/cyclonedds.xml
+RUN echo ". /opt/ros/jazzy/setup.bash" >> /root/.bashrc

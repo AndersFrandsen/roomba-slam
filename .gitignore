@@ -5,6 +5,7 @@ yocto/sstate-cache/
 yocto/poky/
 yocto/meta-openembedded/
 yocto/meta-raspberrypi/
+yocto/meta-ros/
 
 # Secrets
 yocto/kas/wifi.yml

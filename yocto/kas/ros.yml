@@ -1,16 +1,14 @@
 header:
   version: 14
 
+target: robobob-ros-image
+
 repos:
   meta-ros:
     url: https://github.com/ros/meta-ros
     branch: scarthgap
+    commit: 731aa26c6fde2ff4a4991c7f9ac6005ac4a491b1
     layers:
       meta-ros-common:
       meta-ros2:
       meta-ros2-jazzy:
-
-local_conf_header:
-  ros: |
-    ROS_DISTRO = "jazzy"
-    RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
