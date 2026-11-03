@@ -10,6 +10,9 @@ IMAGE_INSTALL:append = " \
     ros-env \
     tf2-ros \
     tf2-ros-py \
+    rplidar-ros \
+    roomba-driver \
+    slam-bringup \
 "
 
 IMAGE_ROOTFS_EXTRA_SPACE = "2097152"

@@ -1,0 +1,13 @@
+roomba_driver:
+  ros__parameters:
+    tx_gpio: 23
+    rx_gpio: 24
+    wheel_diameter: 0.072
+    wheel_base: 0.235
+    rate: 20.0
+    battery_period: 1.0
+    cmd_timeout: 0.5
+    max_linear: 0.3
+    max_angular: 1.5
+    odom_frame: odom
+    base_frame: base_link

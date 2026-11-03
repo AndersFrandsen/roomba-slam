@@ -1,0 +1,2 @@
+LICENSE = "BSD-2-Clause"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=a6c8ac7da7368c03f2b7c2c4a246194d"
