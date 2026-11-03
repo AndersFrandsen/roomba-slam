@@ -9,16 +9,21 @@ RoboBob SLAM converts the 600-series vacuum into a SLAM-capable vacuum cleaner. 
 - **Compute power:** Raspberry Pi Zero 2 W (BCM2710A1, Cortex-A53 quad-core, 512MB RAM)
 - **Lidar:** SLAMTEC RPLIDAR A1 (model A1M8) - 360°, 12m range, 5.5Hz-10Hz scan rate, UART/USB
 
-## Repository Layout (draft)
+## Repository Layout
 
 ```
-yocto/          # Yocto build environment (kas config, custom layer)
-  meta-robobob/ # Project-specific layer: recipes, machine configs, images
+justfile        # build, flash, ros, push
+docker/         # ROS2 Jazzy workstation container (just ros)
+yocto/          # Yocto build environment
+  kas/          # kas configs: base, ros.yml fragment, wifi.yml (gitignored)
+  meta-robobob/ # Project layer: machine conf, images, self-tests, pigpio, ROS recipes
 ros/            # ROS2 workspace
   src/
-    roomba_driver/   # Roomba OI serial node
-    rplidar_ros/     # Submodule or recipe for SLAMTEC driver
+    roomba_driver/   # Roomba OI node: cmd_vel in, odom/TF/bumper/battery out
+    slam_bringup/    # Launch file and params for driver, lidar and laser TF
 ```
+
+`rplidar_ros` comes from a meta-ros recipe, not from `ros/src/`.
 
 ## Yocto Build
 
@@ -138,7 +143,7 @@ roomba-selftest
 ```
 root@robobob-zero2w:~# roomba-selftest
 port    tx=GPIO23 rx=GPIO24
-link    19200 8N1 mode=safe
+link    19200 8N1 mode byte offset +1
 battery 15.92 V -127 mA 21 C 1882/2068 mAh (91%) not charging
 mode    safe
 song    played
@@ -158,3 +163,42 @@ PASS
 | 22 | Short sensor reply |
 | 30 | On the dock |
 | 40 | No button press |
+
+## Robot Bring-up
+
+`slam_bringup` starts the Roomba driver, the lidar and the static `base_link → laser` transform. The lidar motor on GPIO18 is switched on at launch and off at shutdown (`rplidar_ros` expects a DTR line, which the Pi UART doesn't have).
+
+```bash
+# on the Pi, with the Roomba awake and off the dock
+ros2 launch slam_bringup robot.launch.py
+
+# with the lidar mounting offset (metres, radians)
+ros2 launch slam_bringup robot.launch.py laser_x:=0.05 laser_yaw:=3.1416
+```
+
+| Topic | Type | Notes |
+|-------|------|-------|
+| `/cmd_vel` | `geometry_msgs/Twist` | Wheels stop 0.5 s after the last command |
+| `/odom` | `nav_msgs/Odometry` | Plus TF `odom → base_link`, 20 Hz |
+| `/scan` | `sensor_msgs/LaserScan` | Frame `laser` |
+| `/bumper` | `std_msgs/UInt8` | Raw OI packet 7: bit 0/1 bump right/left, bit 2/3 wheel drop right/left |
+| `/battery` | `sensor_msgs/BatteryState` | 1 Hz |
+| `/oi_mode` | `std_msgs/String` | Latched; `safe` while driving |
+
+The driver enters Safe mode at start, unless a charger is present. If the Roomba drops to Passive (wheel drop, docked), the next non-zero `cmd_vel` brings it back to Safe. On exit it stops the wheels and leaves the Roomba in Passive so the battery charges.
+
+Drive it from a host using teleop inside Docker:
+
+```bash
+just ros ros2 run teleop_twist_keyboard teleop_twist_keyboard
+```
+
+Driver parameters (wheel size, GPIOs, poll rate) are in `ros/src/slam_bringup/config/roomba.yaml`. Calibrate `wheel_diameter` against a measured 1 m straight line and `wheel_base` against a 360° turn.
+
+**Editing on the robot:** `just push` copies the `roomba_driver` Python sources and the `slam_bringup` launch and config files to the Pi. No image rebuild is needed. Set `ROBOT=<ip>` if `robobob-zero2w.local` doesn't resolve.
+
+**Tests** run in the ROS container:
+
+```bash
+just ros "cd ros && colcon build && colcon test && colcon test-result --verbose"
+```

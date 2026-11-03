@@ -57,6 +57,18 @@ ros *args:
         -v "$PWD:/repo" -w /repo \
         robobob-ros {{ if args == "" { "bash" } else { "bash -ic '" + args + "'" } }}
 
+# copy roomba_driver and slam_bringup sources onto the robot, no image rebuild
+push:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    robot="${ROBOT:-robobob-zero2w.local}"
+    ros=/opt/ros/jazzy
+    tar -C ros/src/roomba_driver/roomba_driver --exclude=__pycache__ -c . \
+        | ssh "root@$robot" "tar -C $ros/lib/python3.12/site-packages/roomba_driver -x"
+    tar -C ros/src/slam_bringup -c launch config \
+        | ssh "root@$robot" "tar -C $ros/share/slam_bringup -x"
+    echo "pushed to $robot"
+
 # flash SD card: just flash /dev/sdX [image], defaults to the newest build
 flash disk image="":
     #!/usr/bin/env bash
