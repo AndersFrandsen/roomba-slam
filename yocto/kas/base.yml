@@ -41,3 +41,4 @@ local_conf_header:
         HALT,${TMPDIR},100M,1K \
     "
     PARALLEL_MAKE:pn-gcc = "-j 1"
+    DISTRO_FEATURES:remove = "3g nfc"

@@ -11,3 +11,10 @@ yocto/meta-ros/
 yocto/kas/wifi.yml
 
 datasheets/
+
+ros/build/
+ros/install/
+ros/log/
+__pycache__/
+.clj-kondo/
+.lsp/

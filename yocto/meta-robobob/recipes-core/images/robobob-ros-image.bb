@@ -8,4 +8,8 @@ IMAGE_INSTALL:append = " \
     rmw-cyclonedds-cpp \
     demo-nodes-cpp \
     ros-env \
+    tf2-ros \
+    tf2-ros-py \
 "
+
+IMAGE_ROOTFS_EXTRA_SPACE = "2097152"
