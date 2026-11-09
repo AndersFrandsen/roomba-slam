@@ -26,6 +26,7 @@ PKT_OI_MODE = 35
 BATTERY_PACKETS = (21, 22, 23, 24, 25, 26, 34)
 BATTERY_FORMAT = ">BHhbHHB"
 
+MODE_PASSIVE = 1
 MODE_SAFE = 2
 MODES = ["off", "passive", "safe", "full"]
 CHARGING_STATES = ["not charging", "reconditioning", "full charging", "trickle", "waiting", "fault"]
@@ -112,8 +113,9 @@ def query(port, packets, size):
     else:
         port.write([OP_QUERY_LIST, len(packets)] + list(packets))
     data = port.read(size)
-    if len(data) < size:
-        raise Failure(EXIT_SHORT_READ, "sensor reply truncated: %d/%d bytes" % (len(data), size))
+    # extra bytes are late replies or charger text, the payload can't be trusted
+    if len(data) != size:
+        raise Failure(EXIT_SHORT_READ, "sensor reply %d/%d bytes" % (len(data), size))
     return data
 
 
