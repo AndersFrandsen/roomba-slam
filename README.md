@@ -217,3 +217,12 @@ just ros ros2 run teleop_twist_keyboard teleop_twist_keyboard
 Drive around slowly with teleop. The map grows in RViz as the scans come in.
 
 ![Map built by slam_toolbox while driving around](demo_map.png)
+
+**Localization:** save the pose graph on the Pi while mapping, then start later runs from it. The robot must start where the map was started.
+
+```bash
+just ros 'ros2 service call /slam_toolbox/serialize_map slam_toolbox/srv/SerializePoseGraph "{filename: /home/root/maps/home}"'
+
+# on the Pi
+ros2 launch slam_bringup slam.launch.py map:=/home/root/maps/home
+```
