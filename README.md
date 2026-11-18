@@ -1,228 +1,72 @@
 # Roomba SLAM
 
-## Project Overview
+RoboBob SLAM turns a Roomba 600-series vacuum into a SLAM robot. A Raspberry Pi Zero 2 W reads an RPLIDAR A1 and drives the Roomba over its Open Interface (OI), running ROS2 Jazzy on a Yocto-built image. A development host on the same WiFi runs RViz and teleop.
 
-RoboBob SLAM converts the 600-series vacuum into a SLAM-capable vacuum cleaner. A Raspberry Pi Zero 2 W reads LiDAR (Light Detection and Ranging) and drives the Roomba via its Open Interface (OI) serial protocol, running ROS2 nodes on a Yocto-built Linux image.
+![Map built by slam_toolbox while driving around](docs/demo_map.png)
 
-**Hardware stack:**
+## Hardware
+
 - **Robot base:** iRobot Roomba 600 (Create 2 OI compatible)
-- **Compute power:** Raspberry Pi Zero 2 W (BCM2710A1, Cortex-A53 quad-core, 512MB RAM)
-- **Lidar:** SLAMTEC RPLIDAR A1 (model A1M8) - 360°, 12m range, 5.5Hz-10Hz scan rate, UART/USB
+- **Compute:** Raspberry Pi Zero 2 W (Cortex-A53 quad-core, 512 MB RAM)
+- **Lidar:** SLAMTEC RPLIDAR A1M8, 360°, 12 m range, on the Pi's UART
+
+Wiring, pinouts and power are in [docs/hardware.md](docs/hardware.md).
+
+## Status
+
+| Phase | What | Status |
+|-------|------|--------|
+| 1 | Base image: SSH, pigpiod, chrony, self-tests | Done |
+| 2 | ROS2 Jazzy, CycloneDDS | Done |
+| 3 | Drivers: rplidar_ros, roomba_driver | Done |
+| 4 | SLAM and localization with slam_toolbox on the Pi | Done |
+| 5 | Navigation with nav2 | Next |
+
+## Architecture
+
+![ROS nodes, topics and TF on the Pi and the host](docs/ros-architecture.drawio.svg)
+
+## Quick start
+
+Only Docker and [just](https://github.com/casey/just) are needed on the host.
+
+1. Build and flash the image: `just build-ros`, `just flash /dev/sdX` ([yocto](yocto/README.md))
+2. Check the wiring on the Pi: `lidar-selftest`, `roomba-selftest` ([lidar](yocto/meta-robobob/recipes-lidar/lidar-selftest/README.md), [roomba](yocto/meta-robobob/recipes-roomba/roomba-selftest/README.md))
+3. Bring up the robot: `ros2 launch slam_bringup robot.launch.py` ([slam_bringup](ros/src/slam_bringup/README.md))
+4. Drive it from the host: `just ros ros2 run teleop_twist_keyboard teleop_twist_keyboard` ([docker](docker/README.md))
+5. Map: `ros2 launch slam_bringup slam.launch.py` on the Pi, `just rviz` on the host ([slam_bringup](ros/src/slam_bringup/README.md#slam))
+
+## Docs
+
+| Doc | Covers |
+|-----|--------|
+| [docs/hardware.md](docs/hardware.md) | Wiring, pin map, level shifter, OI connector, lidar mount |
+| [docs/ros-architecture.drawio.svg](docs/ros-architecture.drawio.svg) | ROS nodes, topics and TF on the Pi and the host |
+| [docs/wiring.drawio.svg](docs/wiring.drawio.svg) | Pi, level shifter, lidar and Roomba connections |
+| [yocto/README.md](yocto/README.md) | Building and flashing the image, WiFi, layers |
+| [lidar-selftest](yocto/meta-robobob/recipes-lidar/lidar-selftest/README.md) | RPLIDAR check without ROS |
+| [roomba-selftest](yocto/meta-robobob/recipes-roomba/roomba-selftest/README.md) | Roomba OI check without ROS |
+| [roomba_driver](ros/src/roomba_driver/README.md) | OI node: topics, parameters, calibration |
+| [slam_bringup](ros/src/slam_bringup/README.md) | Robot bring-up, SLAM, localization |
+| [docker/README.md](docker/README.md) | Host side: ROS container, RViz, teleop |
+
+## References
+
+| Topic | Links |
+|-------|-------|
+| Roomba | [Create 2 / Roomba 600 OI spec (PDF)](https://cdn.hackaday.io/files/1835247851890816/2021-04-13_iRobot_Roomba_600_Open_Interface_Spec-3.pdf) |
+| Lidar | [RPLIDAR A1 specs](https://www.slamtec.com/en/Lidar/A1Spec), [rplidar_sdk](https://github.com/slamtec/rplidar_sdk), [rplidar_ros](https://github.com/Slamtec/rplidar_ros/tree/ros2) |
+| Pi | [pigpio](https://abyz.me.uk/rpi/pigpio/), [TXS0108E datasheet (PDF)](https://www.ti.com/lit/ds/symlink/txs0108e.pdf) |
+| ROS2 | [Jazzy docs](https://docs.ros.org/en/jazzy/), [tf2](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/Tf2/Tf2-Main.html), [REP 105 frames](https://www.ros.org/reps/rep-0105.html), [CycloneDDS](https://docs.ros.org/en/jazzy/Installation/RMW-Implementations/DDS-Implementations/Working-with-Eclipse-CycloneDDS.html) |
+| SLAM and navigation | [slam_toolbox](https://github.com/SteveMacenski/slam_toolbox), [Nav2](https://docs.nav2.org/) |
+| Build | [Yocto docs](https://docs.yoctoproject.org/), [kas](https://kas.readthedocs.io/), [meta-ros](https://github.com/ros/meta-ros), [meta-raspberrypi](https://github.com/agherzan/meta-raspberrypi), [just](https://github.com/casey/just) |
 
 ## Repository Layout
 
 ```
-justfile        # build, flash, ros, push
-docker/         # ROS2 Jazzy workstation container (just ros)
-yocto/          # Yocto build environment
-  kas/          # kas configs: base, ros.yml fragment, wifi.yml (gitignored)
-  meta-robobob/ # Project layer: machine conf, images, self-tests, pigpio, ROS recipes
-ros/            # ROS2 workspace
-  src/
-    roomba_driver/   # Roomba OI node: cmd_vel in, odom/TF/bumper/battery out
-    slam_bringup/    # Launch file and params for driver, lidar and laser TF
-```
-
-`rplidar_ros` comes from a meta-ros recipe, not from `ros/src/`.
-
-## Yocto Build
-
-The target OS is built with Yocto. Builds run inside the official kas Docker image - no local Yocto or kas install needed, only Docker.
-
-```bash
-# Phase 1 - base image
-just build
-
-# Flash SD card
-just flash /dev/sdX
-
-# Drop into a bitbake shell (debug recipes, run bitbake commands manually)
-just shell
-```
-
-**Yocto layers:**
-- `meta-raspberrypi` - BSP for the Raspberry Pi Zero 2 W target
-- `meta-openembedded` - dependencies
-- `meta-robobob` - project image recipe and machine customizations
-
-## LiDAR Self-Test
-
-Use `lidar-selftest`, a bring-up check for the RPLIDAR A1. Does not rely on ROS. Use it to verify wiring, UART config and motor control.
-
-**Wiring on the Raspberry Pi Zero 2 W:**
-
-| Signal | Pi pin |
-|--------|--------|
-| LIDAR RX | GPIO14 (TX) |
-| LIDAR TX | GPIO15 (RX) |
-| LIDAR MOTOCTL | GPIO18 |
-
-With `dtoverlay=disable-bt` the lidar is on `/dev/ttyAMA0` at 115200 8N1.
-
-**Checks:**
-1. Environment - `serial0` points at the PL011, no kernel console on the UART, no under-voltage
-2. Port - opens and locks the serial port (fails if something else holds it)
-3. Device info - model, firmware, hardware revision and serial number
-4. Health - resets the lidar once if it reports an error
-5. Motor off - scans with MOTOCTL low and warns if the head is still spinning
-6. Motor on - drives MOTOCTL high, scans and checks 
-
-```bash
-# run with defaults (/dev/ttyAMA0, motor on GPIO18)
-lidar-selftest
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--port` | `/dev/ttyAMA0` | Serial port |
-| `--motor-gpio` | `18` | GPIO line wired to MOTOCTL |
-
-**Example output:**
-
-```
-root@robobob-zero2w:~# lidar-selftest
-env     serial0 -> /soc/serial@7e201000 (pl011)
-port    /dev/ttyAMA0 115200 8N1 raw
-info    model=0x18 fw=1.28 hw=5 serial=81839a86c0e09cc9a2e09df713513079
-health  OK code=0x0000
-motor   /dev/gpiochip0 pinctrl-bcm2835 line 18
-scan    4534 nodes 16 revs 7.4 Hz coverage 36/36 valid 78% dropped 0.0%
-PASS
-```
-
-**Exit codes:**
-
-| Code | Meaning |
-|------|---------|
-| 0 | Pass |
-| 10-13 | Port missing, permission denied, busy, termios setup failed |
-| 20-22 | No response, framing error, short read |
-| 30-31 | Health warning, health error |
-| 40 | GPIO error |
-| 50 | Scan did not start |
-| 51 | Motor not spinning |
-| 52 | Incomplete sweep |
-| 53 | Too many dropped bytes |
-
-## Roomba Self-Test
-
-Use `roomba-selftest` for a bring-up check of the Roomba Open Interface. Use it to verify wiring (remember level shifter, so you don't damage the Pi) and the serial link.
-
-**Wiring on the Raspberry Pi Zero 2 W:**
-
-| Signal | Pi pin |
-|--------|--------|
-| Roomba RXD (Mini-DIN pin 3) | GPIO23 (TX) |
-| Roomba TXD (Mini-DIN pin 4) | GPIO24 (RX) |
-| GND (Mini-DIN pin 6/7) | GND |
-
-GPIO23/24 are not hardware UART pins, so the link is a software UART through `pigpiod`, which starts at boot. 
-
-**Checks:**
-1. Link - finds the Roomba at 19200 baud, or switches it down from 115200
-2. Battery - voltage, current, temperature, charge and charging state
-3. Dock - fails if a charging source is present, as Safe mode exits while charging
-4. Safe mode - enters Safe mode and confirms it
-5. Song - plays three notes
-6. LEDs and buttons - blinks the blue LED and fades the Power LED until CLEAN, SPOT or DOCK is pressed (20 s)
-
-The Roomba is left in Passive mode with the LEDs off, so it charges and sleeps normally.
-
-```bash
-# run with defaults (TX on GPIO23, RX on GPIO24)
-roomba-selftest
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--tx-gpio` | `23` | GPIO wired to Roomba RXD |
-| `--rx-gpio` | `24` | GPIO wired to Roomba TXD |
-
-**Example output:**
-
-```
-root@robobob-zero2w:~# roomba-selftest
-port    tx=GPIO23 rx=GPIO24
-link    19200 8N1 mode byte offset +1
-battery 15.92 V -127 mA 21 C 1882/2068 mAh (91%) not charging
-mode    safe
-song    played
-button  press CLEAN, SPOT or DOCK (keep the Roomba on the floor)
-button  CLEAN
-PASS
-```
-
-**Exit codes:**
-
-| Code | Meaning |
-|------|---------|
-| 0 | Pass |
-| 10 | pigpiod not running or pigpio error |
-| 20 | No response at 19200 or 115200 |
-| 21 | Could not enter or left Safe mode |
-| 22 | Short sensor reply |
-| 30 | On the dock |
-| 40 | No button press |
-
-## Robot Bring-up
-
-`slam_bringup` starts the Roomba driver, the lidar and the static `base_link → laser` transform. The lidar motor on GPIO18 is switched on at launch and off at shutdown (`rplidar_ros` expects a DTR line, which the Pi UART doesn't have).
-
-```bash
-# on the Pi, with the Roomba awake and off the dock
-ros2 launch slam_bringup robot.launch.py
-
-```
-
-| Topic | Type | Notes |
-|-------|------|-------|
-| `/cmd_vel` | `geometry_msgs/Twist` | Capped to `max_linear` (0.3 m/s) and `max_angular` (1.5 rad/s); wheels stop 0.5 s after the last command |
-| `/odom` | `nav_msgs/Odometry` | Plus TF `odom → base_link`, 20 Hz |
-| `/scan` | `sensor_msgs/LaserScan` | Frame `laser` |
-| `/bumper` | `std_msgs/UInt8` | Raw OI packet 7: bit 0/1 bump right/left, bit 2/3 wheel drop right/left |
-| `/battery` | `sensor_msgs/BatteryState` | 1 Hz |
-| `/oi_mode` | `std_msgs/String` | Latched; `safe` while driving |
-
-The driver enters Safe mode at start, unless a charger is present. If the Roomba drops to Passive (wheel drop, docked), the next non-zero `cmd_vel` brings it back to Safe. On exit it stops the wheels and leaves the Roomba in Passive so the battery charges.
-
-Drive it from a host using teleop inside Docker:
-
-```bash
-just ros ros2 run teleop_twist_keyboard teleop_twist_keyboard
-```
-
-Driver parameters (wheel size, GPIOs, poll rate, speed limits) are in `ros/src/slam_bringup/config/roomba.yaml`. Calibrate `wheel_diameter` against a measured 1 m straight line and `wheel_base` against a 360° turn.
-
-**Editing on the robot:** `just push` copies the `roomba_driver` Python sources and the `slam_bringup` launch and config files to the Pi. No image rebuild is needed. Set `ROBOT=<ip>` if `robobob-zero2w.local` doesn't resolve.
-
-**Tests** run in the ROS container:
-
-```bash
-just ros "cd ros && colcon build && colcon test && colcon test-result --verbose"
-```
-
-## SLAM
-
-`slam.launch.py` runs the bring-up plus slam_toolbox in async mode on the Pi. Parameters are in `ros/src/slam_bringup/config/slam.yaml`.
-
-```bash
-# on the Pi
-ros2 launch slam_bringup slam.launch.py
-
-# on another host: map, scan and TF, with the slam_toolbox panel
-just rviz
-just ros ros2 run teleop_twist_keyboard teleop_twist_keyboard
-```
-
-Drive around slowly with teleop. The map grows in RViz as the scans come in.
-
-![Map built by slam_toolbox while driving around](demo_map.png)
-
-**Localization:** save the pose graph on the Pi while mapping, then start later runs from it. The robot must start where the map was started.
-
-```bash
-just ros 'ros2 service call /slam_toolbox/serialize_map slam_toolbox/srv/SerializePoseGraph "{filename: /home/root/maps/home}"'
-
-# on the Pi
-ros2 launch slam_bringup slam.launch.py map:=/home/root/maps/home
+justfile        # build, flash, ros, rviz, push
+docs/           # hardware notes
+docker/         # ROS2 Jazzy container for the host
+yocto/          # Yocto build: kas configs and the meta-robobob layer
+ros/src/        # ROS2 packages: roomba_driver, slam_bringup
 ```
