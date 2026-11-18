@@ -12,3 +12,8 @@ repos:
       meta-ros-common:
       meta-ros2:
       meta-ros2-jazzy:
+
+local_conf_header:
+  ros: |
+    # built without the RViz panel, see meta-robobob's slam-toolbox bbappend
+    SKIP_RECIPE[slam-toolbox] = ""

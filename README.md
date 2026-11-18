@@ -172,8 +172,6 @@ PASS
 # on the Pi, with the Roomba awake and off the dock
 ros2 launch slam_bringup robot.launch.py
 
-# with the lidar mounting offset (metres, radians)
-ros2 launch slam_bringup robot.launch.py laser_x:=0.05 laser_yaw:=3.1416
 ```
 
 | Topic | Type | Notes |
@@ -202,3 +200,20 @@ Driver parameters (wheel size, GPIOs, poll rate, speed limits) are in `ros/src/s
 ```bash
 just ros "cd ros && colcon build && colcon test && colcon test-result --verbose"
 ```
+
+## SLAM
+
+`slam.launch.py` runs the bring-up plus slam_toolbox in async mode on the Pi. Parameters are in `ros/src/slam_bringup/config/slam.yaml`.
+
+```bash
+# on the Pi
+ros2 launch slam_bringup slam.launch.py
+
+# on another host: map, scan and TF, with the slam_toolbox panel
+just rviz
+just ros ros2 run teleop_twist_keyboard teleop_twist_keyboard
+```
+
+Drive around slowly with teleop. The map grows in RViz as the scans come in.
+
+![Map built by slam_toolbox while driving around](demo_map.png)

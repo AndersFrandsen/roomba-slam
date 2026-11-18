@@ -15,6 +15,7 @@ RDEPENDS:${PN} = " \
     launch-ros \
     roomba-driver \
     rplidar-ros \
+    slam-toolbox \
     tf2-ros \
     pigpio \
 "

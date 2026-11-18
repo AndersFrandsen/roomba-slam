@@ -3,6 +3,8 @@ FROM osrf/ros:jazzy-desktop
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-jazzy-rmw-cyclonedds-cpp \
         ros-jazzy-teleop-twist-keyboard \
+        ros-jazzy-slam-toolbox \
+        ros-jazzy-nav2-map-server \
     && rm -rf /var/lib/apt/lists/*
 
 COPY cyclonedds.xml /etc/cyclonedds.xml

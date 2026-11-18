@@ -23,10 +23,11 @@ def lidar_motor(on):
 
 def generate_launch_description():
     config = PathJoinSubstitution([FindPackageShare("slam_bringup"), "config"])
-    laser_args = ["laser_x", "laser_y", "laser_z", "laser_yaw"]
+    # lidar is centred over the wheel axle, mounted facing backwards
+    laser_args = {"laser_x": "0.0", "laser_y": "0.0", "laser_z": "0.0", "laser_yaw": "3.1416"}
 
     return LaunchDescription(
-        [DeclareLaunchArgument(name, default_value="0.0") for name in laser_args]
+        [DeclareLaunchArgument(name, default_value=value) for name, value in laser_args.items()]
         + [
             lidar_motor(True),
             RegisterEventHandler(OnShutdown(on_shutdown=[lidar_motor(False)])),

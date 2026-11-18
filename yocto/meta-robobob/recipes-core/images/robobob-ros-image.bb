@@ -13,6 +13,7 @@ IMAGE_INSTALL:append = " \
     rplidar-ros \
     roomba-driver \
     slam-bringup \
+    slam-toolbox \
 "
 
 IMAGE_ROOTFS_EXTRA_SPACE = "2097152"

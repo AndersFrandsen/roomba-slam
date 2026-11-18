@@ -51,11 +51,19 @@ ros *args:
     ip=$(getent ahostsv4 "$robot" | awk 'NR==1 {print $1}' || true)
     [ -n "$ip" ] || echo "warning: cannot resolve $robot, relying on multicast discovery" >&2
     docker build -q -t robobob-ros -f docker/Dockerfile.ros docker > /dev/null
+    # the container runs as root, which X refuses unless allowed
+    if [ -n "${DISPLAY:-}" ] && command -v xhost > /dev/null; then
+        xhost +SI:localuser:root > /dev/null
+    fi
     docker run --rm -it --net=host \
         -e ROBOT_IP="$ip" \
         -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v "$PWD:/repo" -w /repo \
         robobob-ros {{ if args == "" { "bash" } else { "bash -ic '" + args + "'" } }}
+
+# RViz with the map, scan and TF
+rviz:
+    just ros rviz2 -d docker/slam.rviz
 
 # copy roomba_driver and slam_bringup sources onto the robot, no image rebuild
 push:
