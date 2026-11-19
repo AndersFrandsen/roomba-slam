@@ -35,6 +35,7 @@ Only Docker and [just](https://github.com/casey/just) are needed on the host.
 3. Bring up the robot: `ros2 launch slam_bringup robot.launch.py` ([slam_bringup](ros/src/slam_bringup/README.md))
 4. Drive it from the host: `just ros ros2 run teleop_twist_keyboard teleop_twist_keyboard` ([docker](docker/README.md))
 5. Map: `ros2 launch slam_bringup slam.launch.py` on the Pi, `just rviz` on the host ([slam_bringup](ros/src/slam_bringup/README.md#slam))
+6. Navigate: `ros2 launch slam_bringup nav.launch.py map:=<pose graph>`, then 2D Goal Pose in RViz ([slam_bringup](ros/src/slam_bringup/README.md#navigation))
 
 ## Docs
 
@@ -47,7 +48,7 @@ Only Docker and [just](https://github.com/casey/just) are needed on the host.
 | [lidar-selftest](yocto/meta-robobob/recipes-lidar/lidar-selftest/README.md) | RPLIDAR check without ROS |
 | [roomba-selftest](yocto/meta-robobob/recipes-roomba/roomba-selftest/README.md) | Roomba OI check without ROS |
 | [roomba_driver](ros/src/roomba_driver/README.md) | OI node: topics, parameters, calibration |
-| [slam_bringup](ros/src/slam_bringup/README.md) | Robot bring-up, SLAM, localization |
+| [slam_bringup](ros/src/slam_bringup/README.md) | Robot bring-up, SLAM, localization, navigation |
 | [docker/README.md](docker/README.md) | Host side: ROS container, RViz, teleop |
 
 ## References

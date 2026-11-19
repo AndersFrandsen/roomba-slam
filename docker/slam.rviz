@@ -21,6 +21,32 @@ Visualization Manager:
         Reliability Policy: Reliable
       Alpha: 0.7
       Color Scheme: map
+    - Class: rviz_default_plugins/Map
+      Name: Global Costmap
+      Enabled: false
+      Topic:
+        Value: /global_costmap/costmap
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+      Alpha: 0.4
+      Color Scheme: costmap
+    - Class: rviz_default_plugins/Map
+      Name: Local Costmap
+      Enabled: true
+      Topic:
+        Value: /local_costmap/costmap
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+      Alpha: 0.5
+      Color Scheme: costmap
+    - Class: rviz_default_plugins/Path
+      Name: Plan
+      Enabled: true
+      Topic:
+        Value: /plan
+      Color: 0; 200; 255
+      Line Width: 0.03
+      Line Style: Billboards
     - Class: rviz_default_plugins/LaserScan
       Name: Scan
       Enabled: true
@@ -46,6 +72,12 @@ Visualization Manager:
   Tools:
     - Class: rviz_default_plugins/MoveCamera
     - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/SetInitialPose
+      Topic:
+        Value: /initialpose
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
   Views:
     Current:
       Class: rviz_default_plugins/TopDownOrtho

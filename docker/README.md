@@ -1,11 +1,11 @@
 # Host container
 
-A ROS2 Jazzy container for the development host, with RViz, teleop, slam_toolbox's RViz panel and `map_saver_cli`. The host needs only Docker; `just ros` builds the image on first use.
+A ROS2 Jazzy container for the development host, with RViz, teleop, slam_toolbox's RViz panel, `map_saver_cli` and nav2. The host needs only Docker; `just ros` builds the image on first use.
 
 ```bash
 just ros                       # bash shell
 just ros <command>             # run one command
-just rviz                      # RViz with map, scan, TF and the slam_toolbox panel
+just rviz                      # RViz with map, scan, TF, costmaps, plan and the slam_toolbox panel
 just ros ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
 

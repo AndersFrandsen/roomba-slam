@@ -13,6 +13,15 @@ inherit ros_distro_jazzy
 RDEPENDS:${PN} = " \
     launch \
     launch-ros \
+    nav2-behaviors \
+    nav2-bt-navigator \
+    nav2-controller \
+    nav2-lifecycle-manager \
+    nav2-navfn-planner \
+    nav2-planner \
+    nav2-regulated-pure-pursuit-controller \
+    nav2-velocity-smoother \
+    rclcpp-components \
     roomba-driver \
     rplidar-ros \
     slam-toolbox \

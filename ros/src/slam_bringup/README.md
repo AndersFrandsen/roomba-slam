@@ -6,9 +6,12 @@ Launch files and parameters for the robot. Everything here runs on the Pi; the h
 |------|---------|
 | `launch/robot.launch.py` | Lidar, Roomba driver, `base_link → laser` TF |
 | `launch/slam.launch.py` | The above plus slam_toolbox, mapping or localization |
+| `launch/nav.launch.py` | The above plus nav2 |
+| `launch/nav2.launch.py` | nav2 servers only, in one component container |
 | `config/rplidar.yaml` | rplidar_ros parameters |
 | `config/roomba.yaml` | [roomba_driver](../roomba_driver/README.md) parameters |
 | `config/slam.yaml` | slam_toolbox parameters |
+| `config/nav2.yaml` | nav2 parameters: costmaps, planner, controller, behaviors |
 
 ## Robot bring-up
 
@@ -65,9 +68,21 @@ ros2 launch slam_bringup slam.launch.py map:=/home/root/maps/home
 
 The robot must start where the map was started, or set its pose with 2D Pose Estimate in RViz. Maps on the Pi are lost when the SD card is reflashed.
 
+## Navigation
+
+```bash
+# on the Pi, against a saved pose graph
+ros2 launch slam_bringup nav.launch.py map:=/home/root/maps/home
+
+# on the host
+just rviz
+```
+
+Click 2D Goal Pose, find a spot on the map and click. The roomba should automatically drive to that position.
+
 ## Topics
 
-The topics a full `slam.launch.py` run uses. The diagram shows how they connect.
+The topics a full `nav.launch.py` run uses. The diagram shows how they connect.
 
 ![ROS nodes, topics and TF on the Pi and the host](../../../docs/ros-architecture.drawio.svg)
 
@@ -78,8 +93,12 @@ The topics a full `slam.launch.py` run uses. The diagram shows how they connect.
 | `/tf_static` | `tf2_msgs/TFMessage` | laser_tf → all | `base_link → laser`, the lidar mount. Latched |
 | `/map` | `nav_msgs/OccupancyGrid` | slam_toolbox → rviz2, map_saver_cli | Occupancy grid at 5 cm, updated every 5 s. Latched |
 | `/initialpose` | `geometry_msgs/PoseWithCovarianceStamped` | rviz2 → slam_toolbox | 2D Pose Estimate, sets the robot's pose in localization mode |
-| `/cmd_vel` | `geometry_msgs/Twist` | teleop → roomba_driver | Velocity command; wheels stop 0.5 s after the last one |
-| `/odom` | `nav_msgs/Odometry` | roomba_driver | Wheel odometry pose and velocity, 20 Hz |
+| `/goal_pose` | `geometry_msgs/PoseStamped` | rviz2 → bt_navigator | 2D Goal Pose, starts a `navigate_to_pose` action |
+| `/plan` | `nav_msgs/Path` | planner_server → rviz2 | Global path, replanned at 1 Hz |
+| `/global_costmap/costmap`, `/local_costmap/costmap` | `nav_msgs/OccupancyGrid` | nav2 → rviz2 | Costmaps for planning and control |
+| `/cmd_vel_nav` | `geometry_msgs/Twist` | controller_server, behavior_server → velocity_smoother | Raw nav2 velocity command |
+| `/cmd_vel` | `geometry_msgs/Twist` | teleop, velocity_smoother → roomba_driver | Velocity command; wheels stop 0.5 s after the last one |
+| `/odom` | `nav_msgs/Odometry` | roomba_driver → bt_navigator, velocity_smoother | Wheel odometry pose and velocity, 20 Hz |
 | `/bumper` | `std_msgs/UInt8` | roomba_driver | Bump and wheel-drop bits |
 | `/battery` | `sensor_msgs/BatteryState` | roomba_driver | Voltage, current, charge, 1 Hz |
 | `/oi_mode` | `std_msgs/String` | roomba_driver | OI mode (`off`, `passive`, `safe`, `full`). Latched |
@@ -87,6 +106,10 @@ The topics a full `slam.launch.py` run uses. The diagram shows how they connect.
 | Service | Type | Description |
 |---------|------|-------------|
 | `/slam_toolbox/serialize_map` | `slam_toolbox/srv/SerializePoseGraph` | Saves the pose graph on the Pi, for localization |
+
+| Action | Type | Description |
+|--------|------|-------------|
+| `/navigate_to_pose` | `nav2_msgs/action/NavigateToPose` | Drive to a pose in `map`; what 2D Goal Pose calls |
 
 More detail on the driver's topics is in [roomba_driver](../roomba_driver/README.md#topics).
 
@@ -100,4 +123,4 @@ More detail on the driver's topics is in [roomba_driver](../roomba_driver/README
 - [rplidar_ros](https://github.com/Slamtec/rplidar_ros/tree/ros2)
 - [ROS2 launch files](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/Launch/Launch-Main.html)
 - [tf2](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/Tf2/Tf2-Main.html) and [REP 105](https://www.ros.org/reps/rep-0105.html)
-- [Nav2](https://docs.nav2.org/), the next step
+- [Nav2](https://docs.nav2.org/): [configuration guide](https://docs.nav2.org/configuration/index.html), [tuning guide](https://docs.nav2.org/tuning/index.html)
