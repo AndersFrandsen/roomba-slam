@@ -17,6 +17,11 @@ from .odometry import Odometry, wheel_speeds
 
 MAX_MISSES = 5
 RECONNECT_PERIOD = 1.0
+# the OI answers anywhere from at once to ~3 s after a BRC pulse
+WAKE_TIMEOUT = 5.0
+WAKE_PERIOD = 10.0
+# after waking it sends a few unsolicited bytes, let them pass
+WAKE_SETTLE = 1.0
 
 # OI charging state -> BatteryState power supply status
 SUPPLY_STATUS = {
@@ -33,6 +38,8 @@ class RoombaNode(Node):
         super().__init__("roomba_driver")
         self.tx_gpio = self.declare_parameter("tx_gpio", 23).value
         self.rx_gpio = self.declare_parameter("rx_gpio", 24).value
+        brc_gpio = self.declare_parameter("brc_gpio", -1).value
+        self.brc_gpio = brc_gpio if brc_gpio >= 0 else None
         wheel_diameter = self.declare_parameter("wheel_diameter", 0.072).value
         self.wheel_base = self.declare_parameter("wheel_base", 0.235).value
         rate = self.declare_parameter("rate", 20.0).value
@@ -57,6 +64,8 @@ class RoombaNode(Node):
         self.port = None
         self.linked = False
         self.next_connect = 0.0
+        self.next_wake = 0.0
+        self.waking_until = 0.0
         self.mode = None
         self.mode_offset = 0
         self.sources = 0
@@ -89,6 +98,11 @@ class RoombaNode(Node):
             self.get_logger().info("switched OI from %d to %d baud" % (oi.BAUD_DEFAULT, oi.BAUD))
         if self.mode_offset:
             self.get_logger().info("OI reports modes %+d from the spec, compensating" % self.mode_offset)
+        if time.monotonic() < self.waking_until:
+            self.get_logger().info("woke the Roomba")
+            self.waking_until = 0.0
+            time.sleep(WAKE_SETTLE)
+            self.port.flush()
         mode = oi.MODE_PASSIVE
         self.sources = oi.query(self.port, oi.BATTERY_PACKETS, oi.BATTERY_FORMAT)[-1]
         if self.sources:
@@ -127,7 +141,19 @@ class RoombaNode(Node):
                 return
             try:
                 self.connect()
-            except (oi.NoResponse, oi.BadReply) as exc:
+            except oi.NoResponse as exc:
+                if self.brc_gpio is not None and now >= self.next_wake:
+                    self.get_logger().info("no response, pulsing BRC to wake the Roomba")
+                    self.port.wake()
+                    self.next_wake = now + WAKE_PERIOD
+                    self.waking_until = now + WAKE_TIMEOUT
+                    return
+                if now < self.waking_until:
+                    return
+                self.get_logger().error(str(exc), throttle_duration_sec=10.0)
+                self.next_connect = now + RECONNECT_PERIOD
+                return
+            except oi.BadReply as exc:
                 self.get_logger().error(str(exc), throttle_duration_sec=10.0)
                 self.next_connect = now + RECONNECT_PERIOD
                 return
@@ -229,7 +255,7 @@ def main(args=None):
         rclpy.try_shutdown()
         return 1
 
-    port = SoftSerial(pi, node.tx_gpio, node.rx_gpio)
+    port = SoftSerial(pi, node.tx_gpio, node.rx_gpio, node.brc_gpio)
     node.start(port)
     try:
         rclpy.spin(node)

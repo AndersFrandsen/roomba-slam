@@ -2,6 +2,7 @@ roomba_driver:
   ros__parameters:
     tx_gpio: 23
     rx_gpio: 24
+    brc_gpio: 25
     wheel_diameter: 0.0695
     wheel_base: 0.2365
     rate: 20.0

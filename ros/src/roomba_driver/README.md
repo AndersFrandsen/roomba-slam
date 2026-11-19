@@ -19,6 +19,7 @@ Set in `slam_bringup/config/roomba.yaml`.
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | `tx_gpio`, `rx_gpio` | 23, 24 | |
+| `brc_gpio` | 25 | Pulsed low to wake a sleeping Roomba |
 | `wheel_diameter` | 0.0695 m | Calibrated |
 | `wheel_base` | 0.2365 m | Calibrated |
 | `rate` | 20 Hz | Sensor poll and odom rate |
@@ -33,6 +34,10 @@ Set in `slam_bringup/config/roomba.yaml`.
 The driver enters Safe mode at start, unless a charger is present. The firmware drops to Passive on a wheel drop, a cliff or the charger; the next non-zero `cmd_vel` brings it back to Safe. On exit it stops the wheels and leaves the Roomba in Passive so the battery charges.
 
 This Roomba reports the OI mode one higher than the spec. The driver reads the mode right after START, where it must be Passive, and subtracts the offset.
+
+## Waking
+
+When the OI doesn't answer, the driver pulls BRC low for 200 ms and probes again on every tick for 5 s; the OI answers anywhere from at once to about 3 s after the pulse.
 
 ## Calibration
 

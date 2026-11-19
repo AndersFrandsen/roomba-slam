@@ -10,6 +10,10 @@ class FakePort:
         self.replies = list(replies)
         self.writes = []
         self.rx_baud = None
+        self.wakes = 0
+
+    def wake(self):
+        self.wakes += 1
 
     def open_rx(self, baud):
         self.rx_baud = baud

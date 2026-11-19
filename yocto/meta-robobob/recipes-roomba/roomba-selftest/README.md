@@ -2,7 +2,7 @@
 
 Bring-up check for the Roomba Open Interface, without ROS. Use it to verify the wiring through the level shifter and the serial link. Installed in both images.
 
-Wake the Roomba with CLEAN and lift it off the dock first.
+Lift the Roomba off the dock first.
 
 ```bash
 roomba-selftest
@@ -12,12 +12,13 @@ roomba-selftest
 |--------|---------|-------------|
 | `--tx-gpio` | `23` | GPIO wired to Roomba RXD |
 | `--rx-gpio` | `24` | GPIO wired to Roomba TXD |
+| `--brc-gpio` | `25` | GPIO wired to Roomba BRC |
 
 GPIO23/24 are not hardware UART pins, so the link is a software UART through `pigpiod`, which starts at boot.
 
 ## Checks
 
-1. Link - finds the Roomba at 19200 baud, or switches it down from 115200
+1. Link - finds the Roomba at 19200 baud, or switches it down from 115200. If neither answers, pulses BRC and tries once more
 2. Battery - voltage, current, temperature, charge and charging state
 3. Dock - fails if a charging source is present, as Safe mode exits while charging
 4. Safe mode - enters Safe mode and confirms it
@@ -30,7 +31,7 @@ The Roomba is left in Passive mode with the LEDs off, so it charges and sleeps n
 
 ```
 root@robobob-zero2w:~# roomba-selftest
-port    tx=GPIO23 rx=GPIO24
+port    tx=GPIO23 rx=GPIO24 brc=GPIO25
 link    19200 8N1 mode byte offset +1
 battery 15.92 V -127 mA 21 C 1882/2068 mAh (91%) not charging
 mode    safe

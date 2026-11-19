@@ -7,15 +7,28 @@ import pigpio
 from .oi import BAUD
 
 
+WAKE_PULSE = 0.2
+
+
 class SoftSerial:
-    def __init__(self, pi, tx, rx):
+    def __init__(self, pi, tx, rx, brc=None):
         self.pi = pi
         self.tx = tx
         self.rx = rx
+        self.brc = brc
         self.rx_open = False
         pi.set_mode(tx, pigpio.OUTPUT)
         pi.write(tx, 1)
+        if brc is not None:
+            # BRC idles high, a low pulse wakes the Roomba
+            pi.set_mode(brc, pigpio.OUTPUT)
+            pi.write(brc, 1)
         pi.wave_clear()
+
+    def wake(self):
+        self.pi.write(self.brc, 0)
+        time.sleep(WAKE_PULSE)
+        self.pi.write(self.brc, 1)
 
     def open_rx(self, baud):
         # pigpiod keeps the reader open if a previous run died

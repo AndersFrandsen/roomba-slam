@@ -21,6 +21,12 @@ BAUD_DEFAULT = 115200
 BAUD = 19200
 BAUD_CODE_19200 = 7
 
+WAKE_PULSE = 0.2
+# the OI answers anywhere from at once to ~3 s after the pulse
+WAKE_TIMEOUT = 5.0
+# after waking it sends a few unsolicited bytes, let them pass
+WAKE_SETTLE = 1.0
+
 PKT_BUTTONS = 18
 PKT_OI_MODE = 35
 BATTERY_PACKETS = (21, 22, 23, 24, 25, 26, 34)
@@ -54,14 +60,23 @@ class Failure(Exception):
 
 class SoftSerial:
     # pigpio bit-bang UART: DMA waveforms for TX, DMA sampling for RX
-    def __init__(self, pi, tx, rx):
+    def __init__(self, pi, tx, rx, brc=None):
         self.pi = pi
         self.tx = tx
         self.rx = rx
+        self.brc = brc
         self.rx_open = False
         pi.set_mode(tx, pigpio.OUTPUT)
         pi.write(tx, 1)
+        if brc is not None:
+            pi.set_mode(brc, pigpio.OUTPUT)
+            pi.write(brc, 1)
         pi.wave_clear()
+
+    def wake(self):
+        self.pi.write(self.brc, 0)
+        time.sleep(WAKE_PULSE)
+        self.pi.write(self.brc, 1)
 
     def open_rx(self, baud):
         # pigpiod keeps the reader open if a previous run died
@@ -128,18 +143,33 @@ def probe(port):
     return data[0] if len(data) == 1 and data[0] <= len(MODES) else None
 
 
-def connect(port):
-    port.open_rx(BAUD)
+def link(port):
     mode = probe(port)
     if mode is None:
         # fresh power-up: the OI listens at 115200, switch it down once, TX only
         port.write([OP_START, OP_BAUD, BAUD_CODE_19200], baud=BAUD_DEFAULT)
         time.sleep(0.1)
         mode = probe(port)
-        if mode is None:
-            raise Failure(EXIT_NO_RESPONSE, "no response at %d or %d baud, asleep? press CLEAN once"
-                          % (BAUD, BAUD_DEFAULT))
-        print("link    switched %d -> %d baud" % (BAUD_DEFAULT, BAUD))
+        if mode is not None:
+            print("link    switched %d -> %d baud" % (BAUD_DEFAULT, BAUD))
+    return mode
+
+
+def connect(port):
+    port.open_rx(BAUD)
+    mode = link(port)
+    if mode is None and port.brc is not None:
+        print("wake    no response, pulsing BRC on GPIO%d" % port.brc)
+        port.wake()
+        deadline = time.monotonic() + WAKE_TIMEOUT
+        while mode is None and time.monotonic() < deadline:
+            mode = link(port)
+        if mode is not None:
+            time.sleep(WAKE_SETTLE)
+            port.flush()
+    if mode is None:
+        raise Failure(EXIT_NO_RESPONSE, "no response at %d or %d baud, asleep? press CLEAN once"
+                      % (BAUD, BAUD_DEFAULT))
     # just sent START, so this is passive; some 600 firmware reports modes one high
     offset = mode - MODE_PASSIVE
     if offset not in (0, 1):
@@ -223,8 +253,10 @@ def run(args):
     port = None
     linked = False
     try:
-        port = SoftSerial(pi, args.tx_gpio, args.rx_gpio)
-        print("port    tx=GPIO%d rx=GPIO%d" % (args.tx_gpio, args.rx_gpio))
+        brc = args.brc_gpio if args.brc_gpio >= 0 else None
+        port = SoftSerial(pi, args.tx_gpio, args.rx_gpio, brc)
+        print("port    tx=GPIO%d rx=GPIO%d brc=%s"
+              % (args.tx_gpio, args.rx_gpio, "GPIO%d" % brc if brc is not None else "off"))
 
         offset = connect(port)
         linked = True
@@ -254,6 +286,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Roomba OI bring-up self-test")
     parser.add_argument("--tx-gpio", type=int, default=23)
     parser.add_argument("--rx-gpio", type=int, default=24)
+    parser.add_argument("--brc-gpio", type=int, default=25, help="-1 if BRC is not wired")
     args = parser.parse_args(argv)
 
     try:

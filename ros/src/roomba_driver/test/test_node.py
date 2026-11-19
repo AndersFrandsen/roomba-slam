@@ -161,3 +161,33 @@ def test_cmd_vel_is_capped(node, port):
     node.on_timer()
     spin = int(round(1.5 * node.wheel_base / 2.0 * 1000.0))
     assert drives(port)[-1] == oi.drive_direct(-spin, spin)
+
+
+def asleep(node, port, brc_gpio):
+    node.brc_gpio = brc_gpio
+    node.linked = False
+    node.next_connect = 0.0
+    port.replies.clear()
+
+
+def test_pulses_brc_when_asleep(node, port):
+    asleep(node, port, 25)
+    node.on_timer()
+    assert port.wakes == 1
+    assert not node.linked
+
+    # probed again on the next tick while waking, no second pulse
+    node.on_timer()
+    assert port.wakes == 1
+    assert node.next_connect == 0.0
+
+    node.next_connect = 0.0
+    port.replies += [bytes([oi.MODE_PASSIVE]), battery_reply(), bytes([oi.MODE_SAFE]), motion()]
+    node.on_timer()
+    assert node.linked
+
+
+def test_no_brc_pulse_without_brc_gpio(node, port):
+    asleep(node, port, None)
+    node.on_timer()
+    assert port.wakes == 0

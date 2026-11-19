@@ -11,6 +11,7 @@
 | Lidar MOTOCTL | GPIO18 | High = motor on |
 | Roomba RXD (Mini-DIN pin 3) | GPIO23 | pigpio bit-bang TX, through the level shifter |
 | Roomba TXD (Mini-DIN pin 4) | GPIO24 | pigpio bit-bang RX, through the level shifter |
+| Roomba BRC (Mini-DIN pin 5) | GPIO25 | Wake pulse, through the level shifter |
 | Roomba GND (Mini-DIN pin 6/7) | GND | |
 
 The Pi Zero 2 W has one usable hardware UART. `dtoverlay=disable-bt` frees the PL011 from Bluetooth and gives it to the lidar, which needs the throughput. The Roomba runs on a software UART at 19200 baud through `pigpiod`.
@@ -24,18 +25,18 @@ The Pi Zero 2 W has one usable hardware UART. `dtoverlay=disable-bt` frees the P
 | 1, 2 | Vpwr | Unregulated battery, fused 200 mA continuous. Do not power the Pi from here |
 | 3 | RXD | Into the Roomba, 0–5 V |
 | 4 | TXD | Out of the Roomba, 0–5 V |
-| 5 | BRC | Not wired |
+| 5 | BRC | Baud Rate Change |
 | 6, 7 | GND | |
 
-The Roomba uses 5 V logic and the Pi 3.3 V, so RXD and TXD go through a bidirectional level shifter (TXS0108E style). Tie its OE pin to 3.3 V, or every channel floats.
+The Roomba uses 5V logic and the Pi 3.3V, so RXD, TXD and BRC go through a bidirectional level shifter (TXS0108E).
 
-The OI boots at 115200 baud, too fast for a bit-bang UART. Software switches it to 19200 once after power-up. BRC is not wired, so a sleeping Roomba can't be woken over serial: press CLEAN once.
+The OI boots at 115200 baud, too fast for a bit-bang UART. Software switches it to 19200 once after power-up.
 
-Always leave the OI in Passive before disconnecting. Safe or Full mode blocks charging and will deep-discharge the battery.
+The Roomba sleeps after 5 minutes in Passive mode. When it doesn't answer, the driver and `roomba-selftest` pull BRC low for 200 ms to wake it. GPIO25 boots as an input with a pull-down, which through the level shifter would hold BRC low, so `config.txt` sets it to output high (`gpio=25=op,dh`). This works on the dock too. After sleeping there the OI is back at 115200 baud, which the driver handles.
 
 ## Lidar
 
-- 5 V logic and motor supply. 5.5 Hz scans by default; 10 Hz needs 9 V on the motor.
+- 5V logic and motor supply. 5.5 Hz scans by default; 10 Hz needs 9V on the motor.
 - No USB adapter, so no DTR line: the motor is switched on GPIO18 by the launch file.
 - Mounted centred over the wheel axle, facing backwards. The launch file's default `laser_yaw` of π matches this.
 
